@@ -11,6 +11,14 @@ export default function AdminLayout() {
           headerShown: true,
         }}
       />
+
+      <Stack.Screen
+        name="edit-product/[id]" // route phải trùng với file app/(admin)/edit-product/[id].tsx
+        options={{
+          title: "Chỉnh sửa sản phẩm",
+          headerShown: true,
+        }}
+      />
     </Stack>
   );
 }

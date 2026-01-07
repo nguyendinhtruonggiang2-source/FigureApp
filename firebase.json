@@ -1,0 +1,44 @@
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+
+    "headers": [
+      {
+        "source": "**/*.ttf",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "font/ttf"
+          }
+        ]
+      },
+      {
+        "source": "**/*.woff",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "font/woff"
+          }
+        ]
+      },
+      {
+        "source": "**/*.woff2",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "font/woff2"
+          }
+        ]
+      }
+    ],
+
+    
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
