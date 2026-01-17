@@ -1,7 +1,5 @@
-// app/(tabs)/_layout.tsx
 import { Tabs } from 'expo-router';
-import React from 'react';
-
+import { Platform } from 'react-native';
 import { HapticTab } from '../../components/haptic-tab';
 import { IconSymbol } from '../../components/ui/icon-symbol';
 import { useColorScheme } from '../../hooks/use-color-scheme';
@@ -12,68 +10,100 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#00eaff', // Màu xanh neon phù hợp với app
+        tabBarActiveTintColor: '#00eaff',
         tabBarInactiveTintColor: colorScheme === 'dark' ? '#888' : '#666',
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
           backgroundColor: colorScheme === 'dark' ? '#0a0a0a' : '#f8f8f8',
           borderTopColor: colorScheme === 'dark' ? '#222' : '#ddd',
-          height: 60,
-          paddingBottom: 8,
+          height: Platform.OS === 'ios' ? 85 : 60,
+          paddingBottom: Platform.OS === 'ios' ? 30 : 8,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
+          marginBottom: Platform.OS === 'ios' ? 0 : 4,
         },
-      }}>
-      
-      {/* TAB HOME - Trang chủ chính */}
+      }}
+    >
+
+      {/* HOME TAB */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Trang chủ',
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol 
-              size={26} 
-              name={focused ? "house.fill" : "house"} 
-              color={color} 
+            <IconSymbol
+              size={26}
+              name={focused ? "house.fill" : "house"}
+              color={color}
             />
           ),
         }}
       />
 
-      {/* TAB EXPLORE - Khám phá sản phẩm */}
+      {/* CART TAB */}
       <Tabs.Screen
-        name="explore"
+        name="cart"
         options={{
-          title: 'Khám phá',
+          title: 'Giỏ hàng',
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol 
-              size={26} 
-              name={focused ? "magnifyingglass.circle.fill" : "magnifyingglass.circle"} 
-              color={color} 
+            <IconSymbol
+              size={26}
+              name={focused ? "cart.fill" : "cart"}
+              color={color}
             />
           ),
         }}
       />
 
-      {/* TAB PROFILE - Thay vì Admin, tạo tab Profile */}
+      {/* ORDERS TAB */}
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: 'Đơn hàng',
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol
+              size={26}
+              name={focused ? "bag.fill" : "bag"}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      {/* PROFILE TAB */}
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Tài khoản',
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol 
-              size={26} 
-              name={focused ? "person.fill" : "person"} 
-              color={color} 
+            <IconSymbol
+              size={26}
+              name={focused ? "person.fill" : "person"}
+              color={color}
             />
           ),
         }}
       />
 
+      {/* ẨN CHECKOUT KHỎI TAB BAR */}
+      <Tabs.Screen
+        name="checkout"
+        options={{
+          href: null, // Ẩn khỏi tab bar
+        }}
+      />
+      
+      {/* XÓA DÒNG NÀY: product/[id] KHÔNG NÊN Ở ĐÂY */}
+      {/* <Tabs.Screen
+        name="product/[id]"
+        options={{
+          href: null,
+        }}
+      /> */}
     </Tabs>
   );
 }

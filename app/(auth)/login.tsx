@@ -2,11 +2,11 @@ import { router } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
 import {
-    Alert,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { auth } from "../constants/firebase";
 
@@ -36,6 +36,7 @@ export default function LoginScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: "#0f172a", justifyContent: "center", padding: 24 }}>
       <View style={{ backgroundColor: "#020617", borderRadius: 20, padding: 24, borderWidth: 1, borderColor: "#38bdf8" }}>
+        
         <Text style={{ fontSize: 28, fontWeight: "700", color: "#38bdf8", textAlign: "center", marginBottom: 24 }}>
           Đăng nhập
         </Text>
@@ -56,8 +57,18 @@ export default function LoginScreen() {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
-          style={{ borderWidth: 1, borderColor: "#334155", borderRadius: 12, padding: 14, color: "white", marginBottom: 20 }}
+          style={{ borderWidth: 1, borderColor: "#334155", borderRadius: 12, padding: 14, color: "white", marginBottom: 10 }}
         />
+
+        {/* ===== Quên mật khẩu (NEW) ===== */}
+        <TouchableOpacity
+          onPress={() => router.push("/(auth)/forgot-password")}
+          style={{ alignSelf: "flex-end", marginBottom: 20 }}
+        >
+          <Text style={{ color: "#38bdf8", fontSize: 13 }}>
+            Quên mật khẩu?
+          </Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           onPress={handleLogin}
@@ -75,6 +86,7 @@ export default function LoginScreen() {
             <Text style={{ color: "#38bdf8", fontWeight: "600" }}>Đăng ký</Text>
           </Text>
         </TouchableOpacity>
+
       </View>
     </View>
   );
