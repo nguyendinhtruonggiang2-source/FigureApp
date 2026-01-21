@@ -2,13 +2,14 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { IconSymbol } from '../../components/ui/icon-symbol';
 import { auth, db } from '../constants/firebase';
@@ -40,13 +41,44 @@ interface Order {
   createdAt: any;
   userId: string;
   stripePaymentId?: string;
+  trackingNumber?: string;
+  carrier?: string;
+  estimatedDelivery?: any;
 }
+
+// Fallback icon component
+const FallbackIcon = ({ name, size, color }: { name: string; size: number; color: string }) => {
+  const getIconChar = () => {
+    switch(name) {
+      case 'truck': return '🚚';
+      case 'local-shipping': return '🚚';
+      case 'shippingbox': return '📦';
+      case 'creditcard': return '💳';
+      case 'receipt': return '🧾';
+      case 'person': return '👤';
+      case 'phone': return '📱';
+      case 'location': return '📍';
+      case 'arrow.left': return '←';
+      default: return '○';
+    }
+  };
+
+  return (
+    <Text style={{ fontSize: size, color }}>
+      {getIconChar()}
+    </Text>
+  );
+};
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [trackingInfo, setTrackingInfo] = useState<{
+    steps: Array<{ date: string; status: string; description: string }>;
+    currentStep: number;
+  } | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -70,10 +102,13 @@ export default function OrderDetailScreen() {
           return;
         }
 
-        setOrder({
+        const orderWithId = {
           id: orderSnap.id,
           ...orderData,
-        });
+        };
+        
+        setOrder(orderWithId);
+        generateTrackingInfo(orderWithId);
       } else {
         Alert.alert('Lỗi', 'Không tìm thấy đơn hàng');
         router.back();
@@ -83,6 +118,56 @@ export default function OrderDetailScreen() {
       Alert.alert('Lỗi', 'Không thể tải chi tiết đơn hàng');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateTrackingInfo = (orderData: Order) => {
+    const steps = [
+      { date: formatDate(orderData.createdAt), status: 'order_placed', description: 'Đơn hàng đã được đặt' },
+    ];
+
+    if (orderData.status !== 'pending' && orderData.status !== 'failed') {
+      steps.push({ date: getNextDate(orderData.createdAt, 1), status: 'processing', description: 'Đang xử lý đơn hàng' });
+    }
+
+    if (orderData.status === 'paid' || orderData.status === 'shipped' || orderData.status === 'delivered') {
+      steps.push({ date: getNextDate(orderData.createdAt, 2), status: 'packed', description: 'Đã đóng gói' });
+    }
+
+    if (orderData.status === 'shipped' || orderData.status === 'delivered') {
+      steps.push({ date: getNextDate(orderData.createdAt, 3), status: 'shipped', description: 'Đã giao cho đơn vị vận chuyển' });
+    }
+
+    if (orderData.status === 'delivered') {
+      steps.push({ date: getNextDate(orderData.createdAt, 4), status: 'delivered', description: 'Đã giao hàng thành công' });
+    }
+
+    const statusToStep: Record<OrderStatus, number> = {
+      pending: 0,
+      paid: 1,
+      failed: 0,
+      shipped: 3,
+      delivered: 4,
+      cancelled: 0,
+    };
+
+    setTrackingInfo({
+      steps,
+      currentStep: statusToStep[orderData.status] || 0,
+    });
+  };
+
+  const getNextDate = (timestamp: any, days: number) => {
+    try {
+      const date = timestamp.toDate();
+      date.setDate(date.getDate() + days);
+      return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    } catch (error) {
+      return '--/--/----';
     }
   };
 
@@ -127,6 +212,7 @@ export default function OrderDetailScreen() {
     }
   };
 
+  /* ---------- HỦY ĐƠN HÀNG ---------- */
   const handleCancelOrder = async () => {
     if (!order) return;
 
@@ -161,6 +247,101 @@ export default function OrderDetailScreen() {
     );
   };
 
+  /* ---------- THEO DÕI ĐƠN HÀNG ---------- */
+  const handleTrackOrder = () => {
+    if (!order) return;
+
+    Alert.alert(
+      'Theo dõi đơn hàng',
+      'Chọn cách theo dõi đơn hàng:',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xem lịch trình giao hàng',
+          onPress: () => showTrackingTimeline(),
+        },
+        order.trackingNumber ? {
+          text: 'Tra cứu vận đơn',
+          onPress: () => openCarrierTracking(),
+        } : null,
+        {
+          text: 'Liên hệ hỗ trợ',
+          onPress: () => contactSupport(),
+        },
+      ].filter(Boolean) as any
+    );
+  };
+
+  const showTrackingTimeline = () => {
+    if (!trackingInfo) return;
+
+    Alert.alert(
+      'Lịch trình đơn hàng',
+      trackingInfo.steps.map((step, index) => {
+        const isCurrent = index === trackingInfo.currentStep;
+        const isCompleted = index < trackingInfo.currentStep;
+        const prefix = isCompleted ? '✅' : isCurrent ? '⏳' : '⏳';
+        return `${prefix} ${step.date}: ${step.description}`;
+      }).join('\n\n'),
+      [{ text: 'Đóng', style: 'cancel' }]
+    );
+  };
+
+  const openCarrierTracking = () => {
+    if (!order?.trackingNumber) {
+      Alert.alert('Thông báo', 'Đơn hàng chưa có mã vận đơn');
+      return;
+    }
+
+    const carriers: Record<string, string> = {
+      'ghtk': 'https://giaohangtietkiem.vn/tracking/?order_code=',
+      'ghn': 'https://donhang.ghn.vn/?order_code=',
+      'viettel': 'https://viettelpost.com.vn/tra-cuu-hanh-trinh-don/',
+      'j&t': 'https://jtexpress.vn/tracking?type=track&billcode=',
+    };
+
+    const carrier = order.carrier || 'ghtk';
+    const trackingUrl = carriers[carrier] + order.trackingNumber;
+
+    Linking.canOpenURL(trackingUrl).then(supported => {
+      if (supported) {
+        Linking.openURL(trackingUrl);
+      } else {
+        Alert.alert('Thông báo', `Mã vận đơn: ${order.trackingNumber}\nHãng vận chuyển: ${carrier}`);
+      }
+    });
+  };
+
+  const contactSupport = () => {
+    const phoneNumber = '19001001';
+    const email = 'support@figureshop.com';
+    
+    Alert.alert(
+      'Liên hệ hỗ trợ',
+      `Hotline: ${phoneNumber}\nEmail: ${email}\nThời gian làm việc: 8:00 - 17:00 từ thứ 2 đến thứ 6`,
+      [
+        { text: 'Đóng', style: 'cancel' },
+        {
+          text: 'Gọi điện',
+          onPress: () => Linking.openURL(`tel:${phoneNumber}`),
+        },
+        {
+          text: 'Gửi email',
+          onPress: () => Linking.openURL(`mailto:${email}`),
+        },
+      ]
+    );
+  };
+
+  // Safe icon renderer
+  const renderIcon = (name: string, size: number, color: string) => {
+    try {
+      return <IconSymbol name={name as any} size={size} color={color} />;
+    } catch (error) {
+      return <FallbackIcon name={name} size={size} color={color} />;
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -185,13 +366,13 @@ export default function OrderDetailScreen() {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <IconSymbol name="arrow.left" size={24} color="#333" />
+          {renderIcon('arrow.left', 24, '#333')}
         </TouchableOpacity>
         <Text style={styles.title}>Chi tiết đơn hàng</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Thông tin đơn hàng */}
+      {/* XEM CHI TIẾT ĐƠN HÀNG */}
       <View style={styles.section}>
         <View style={styles.orderHeader}>
           <View>
@@ -208,16 +389,26 @@ export default function OrderDetailScreen() {
         <View style={styles.divider} />
 
         <View style={styles.infoRow}>
-          <IconSymbol name="creditcard" size={18} color="#6b7280" />
+          {renderIcon('creditcard', 18, '#6b7280')}
           <Text style={styles.infoLabel}>Phương thức thanh toán:</Text>
           <Text style={styles.infoValue}>
             {order.paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng (COD)' : 'Thẻ tín dụng/ghi nợ'}
           </Text>
         </View>
 
+        {order.trackingNumber && (
+          <View style={styles.infoRow}>
+            {renderIcon('truck', 18, '#6b7280')}
+            <Text style={styles.infoLabel}>Mã vận đơn:</Text>
+            <Text style={styles.infoValue} numberOfLines={1}>
+              {order.trackingNumber}
+            </Text>
+          </View>
+        )}
+
         {order.stripePaymentId && (
           <View style={styles.infoRow}>
-            <IconSymbol name="receipt" size={18} color="#6b7280" />
+            {renderIcon('receipt', 18, '#6b7280')}
             <Text style={styles.infoLabel}>Mã thanh toán:</Text>
             <Text style={styles.infoValue} numberOfLines={1}>
               {order.stripePaymentId}
@@ -231,19 +422,21 @@ export default function OrderDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Thông tin giao hàng</Text>
           <View style={styles.infoRow}>
-            <IconSymbol name="person" size={18} color="#6b7280" />
+            {renderIcon('person', 18, '#6b7280')}
             <Text style={styles.infoLabel}>Người nhận:</Text>
             <Text style={styles.infoValue}>{order.shippingAddress.name}</Text>
           </View>
           <View style={styles.infoRow}>
-            <IconSymbol name="phone" size={18} color="#6b7280" />
+            {renderIcon('phone', 18, '#6b7280')}
             <Text style={styles.infoLabel}>Số điện thoại:</Text>
             <Text style={styles.infoValue}>{order.shippingAddress.phone}</Text>
           </View>
           <View style={styles.infoRow}>
-            <IconSymbol name="location" size={18} color="#6b7280" />
+            {renderIcon('location', 18, '#6b7280')}
             <Text style={styles.infoLabel}>Địa chỉ:</Text>
-            <Text style={styles.infoValue}>{order.shippingAddress.address}</Text>
+            <Text style={styles.infoValue}>
+              {order.shippingAddress.address}, {order.shippingAddress.ward}, {order.shippingAddress.district}, {order.shippingAddress.city}
+            </Text>
           </View>
         </View>
       )}
@@ -286,6 +479,7 @@ export default function OrderDetailScreen() {
 
       {/* Nút hành động */}
       <View style={styles.actions}>
+        {/* NÚT HỦY ĐƠN HÀNG */}
         {order.status === 'pending' && (
           <TouchableOpacity
             style={styles.cancelButton}
@@ -300,13 +494,12 @@ export default function OrderDetailScreen() {
           </TouchableOpacity>
         )}
         
+        {/* NÚT THEO DÕI ĐƠN HÀNG */}
         <TouchableOpacity
           style={styles.trackButton}
-          onPress={() => {
-            // TODO: Implement tracking
-            Alert.alert('Thông báo', 'Tính năng đang phát triển');
-          }}
+          onPress={handleTrackOrder}
         >
+          {renderIcon('shippingbox', 20, '#fff')}
           <Text style={styles.trackButtonText}>THEO DÕI ĐƠN HÀNG</Text>
         </TouchableOpacity>
       </View>
@@ -484,6 +677,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   cancelButtonText: {
     color: '#dc2626',
@@ -491,15 +686,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   trackButton: {
-    backgroundColor: '#1a73e8',
+    backgroundColor: '#10b981',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   trackButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 8,
   },
   backButton: {
     backgroundColor: '#1a73e8',

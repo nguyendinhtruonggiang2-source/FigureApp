@@ -95,8 +95,8 @@ export default function CartScreen() {
         const currentQty = snap.data().quantity;
         const newQty = currentQty + change;
 
+        // Nếu số lượng mới < 1, xóa sản phẩm khỏi giỏ hàng
         if (newQty < 1) {
-          // Nếu số lượng mới < 1, xóa sản phẩm khỏi giỏ hàng
           tx.delete(ref);
           return;
         }
@@ -120,25 +120,13 @@ export default function CartScreen() {
   const removeItem = async (id: string) => {
     if (!user) return;
 
-    Alert.alert(
-      "Xóa sản phẩm", 
-      "Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?",
-      [
-        { text: "Hủy", style: "cancel" },
-        {
-          text: "Xóa",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteDoc(doc(db, "carts", user.uid, "items", id));
-            } catch (error) {
-              console.error("Lỗi xóa sản phẩm:", error);
-              Alert.alert("Lỗi", "Không thể xóa sản phẩm");
-            }
-          },
-        },
-      ]
-    );
+    // XÓA NGAY KHÔNG CẦN CONFIRM
+    try {
+      await deleteDoc(doc(db, "carts", user.uid, "items", id));
+    } catch (error) {
+      console.error("Lỗi xóa sản phẩm:", error);
+      Alert.alert("Lỗi", "Không thể xóa sản phẩm");
+    }
   };
 
   /* ---------- CHECKOUT ---------- */
@@ -192,7 +180,6 @@ export default function CartScreen() {
       
       {items.map((item) => {
         const isUpdating = updatingItems.has(item.id);
-        const isMinusDisabled = item.quantity <= 1;
 
         return (
           <View key={item.id} style={styles.item}>
@@ -219,17 +206,17 @@ export default function CartScreen() {
             </Text>
 
             <View style={styles.qtyRow}>
-              {/* Nút trừ (-) */}
+              {/* Nút trừ (-) - KHÔNG DISABLE KHI QUANTITY = 1 */}
               <TouchableOpacity
-                style={[styles.qtyBtn, isMinusDisabled && styles.qtyBtnDisabled]}
+                style={styles.qtyBtn}
                 onPress={() => updateQty(item, -1)}
-                disabled={isUpdating || isMinusDisabled}
+                disabled={isUpdating}
                 activeOpacity={0.6}
               >
                 {isUpdating ? (
                   <ActivityIndicator size="small" color="#666" />
                 ) : (
-                  <Text style={[styles.qtyBtnText, isMinusDisabled && styles.disabledBtn]}>−</Text>
+                  <Text style={styles.qtyBtnText}>−</Text>
                 )}
               </TouchableOpacity>
 
@@ -383,17 +370,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
   },
-  qtyBtnDisabled: {
-    backgroundColor: "#f5f5f5",
-    borderColor: "#e0e0e0",
-  },
   qtyBtnText: { 
     fontSize: 20, 
     fontWeight: "600",
     color: "#333",
-  },
-  disabledBtn: {
-    color: "#ccc",
   },
   qty: { 
     fontSize: 16, 

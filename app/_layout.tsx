@@ -60,7 +60,8 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   const [loaded] = useFonts({
-    ...MaterialIcons.font,
+    // Chỉ load font cho mobile, web sẽ dùng fallback
+    ...(Platform.OS !== 'web' ? MaterialIcons.font : {}),
   });
 
   useEffect(() => {
@@ -87,6 +88,14 @@ export default function RootLayout() {
             headerTintColor: colorScheme === "dark" ? "#ffffff" : "#1a1a1a",
           }}
         >
+          {/* Tabs Stack - LAYOUT CHÍNH */}
+          <Stack.Screen 
+            name="(tabs)" 
+            options={{ 
+              headerShown: false,
+            }} 
+          />
+          
           {/* Auth Stack */}
           <Stack.Screen 
             name="(auth)" 
@@ -95,28 +104,28 @@ export default function RootLayout() {
             }} 
           />
           
-          {/* Tabs Stack */}
-          <Stack.Screen 
-            name="(tabs)" 
-            options={{ 
-              headerShown: false,
-            }} 
-          />
-          
-          {/* Product Detail */}
-          <Stack.Screen
-            name="product/[id]"
-            options={{
-              title: "Chi tiết sản phẩm",
-              headerBackTitle: "Quay lại",
-            }}
-          />
-          
           {/* Order Detail */}
           <Stack.Screen
             name="order-detail/[id]"
             options={{
               title: "Chi tiết đơn hàng",
+              headerShown: false,
+            }}
+          />
+          
+          {/* Checkout Screens */}
+          <Stack.Screen
+            name="checkout/success"
+            options={{
+              title: "Thanh toán thành công",
+              headerShown: false,
+            }}
+          />
+          
+          <Stack.Screen
+            name="checkout/failed"
+            options={{
+              title: "Thanh toán thất bại",
               headerShown: false,
             }}
           />
@@ -129,14 +138,7 @@ export default function RootLayout() {
             }}
           />
           
-          {/* Modal Stack */}
-          <Stack.Screen
-            name="modal"
-            options={{ 
-              presentation: "modal", 
-              title: "Thông báo",
-            }}
-          />
+          {/* KHÔNG ĐỊNH NGHĨA product/[id] Ở ĐÂY - Nó đã có trong cấu trúc thư mục */}
         </Stack>
         
         {/* Status Bar */}

@@ -1,23 +1,23 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { User, onAuthStateChanged } from "firebase/auth";
 import {
-    collection,
-    doc,
-    onSnapshot,
-    serverTimestamp,
-    writeBatch
+  collection,
+  doc,
+  onSnapshot,
+  serverTimestamp,
+  writeBatch
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import { auth, db } from "../constants/firebase";
